@@ -27,12 +27,11 @@ import comicstreamer.messages.DbVersion;
 import comicstreamer.messages.Deleted;
 import comicstreamer.messages.Deletedcomic;
 import comicstreamer.messages.Status;
-import okhttp3.Authenticator;
 import okhttp3.Credentials;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
-import okhttp3.Route;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
@@ -40,9 +39,9 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 
 public class ComicStreamer {
-    private static ComicStreamerApiEndpointInterface apiService;
-    private static OkHttpClient okHttpClient;
-    private static String hostName;
+    private ComicStreamerApiEndpointInterface apiService;
+    private OkHttpClient okHttpClient;
+    private String hostName;
 
     public ComicStreamer(String hostName, final String username, final String password, final boolean allowUntrusted) {
 
@@ -98,17 +97,25 @@ public class ComicStreamer {
         }
 
         if (!username.isEmpty()){
-            clientBuilder.authenticator(new Authenticator() {
+            clientBuilder.addInterceptor(new Interceptor() {
                 @Override
-                public Request authenticate(Route route, okhttp3.Response response) throws IOException {
+                public okhttp3.Response intercept(Interceptor.Chain chain) throws IOException {
+
+                    System.out.println("Using credentials");
+
                     String credential = Credentials.basic(username, password);
-                    return response.request().newBuilder()
-                            .header("Authorization", credential)
+                    Request newRequest = chain.request().newBuilder()
+                            .addHeader("Authorization", credential)
                             .build();
+
+                    return chain.proceed(newRequest);
                 }
             });
         }
+
         okHttpClient = clientBuilder.build();
+
+
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(hostName)
@@ -204,7 +211,7 @@ public class ComicStreamer {
     }
 
 
-    public static OkHttpClient getOkHttpClient() {
+    public OkHttpClient getOkHttpClient() {
         return okHttpClient;
     }
 
